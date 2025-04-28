@@ -37,7 +37,7 @@ interface ChartOptions {
   interval: string;
 }
 
-const API_URL = 'https://stock-monitor-r9g93gfap-marcusmoons-projects.vercel.app/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://stock-monitor-r9g93gfap-marcusmoons-projects.vercel.app/api';
 
 const StockChart: React.FC = () => {
   const [stockData, setStockData] = useState<StockData[]>([]);
