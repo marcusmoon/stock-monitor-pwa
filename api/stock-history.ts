@@ -30,7 +30,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const queryOptions = {
       period1: '2020-01-01',
-      interval: interval || '1d',
+      interval: interval as '1d' | '1wk' | '1mo' || '1d',
+      events: 'history' as const,
+      includeAdjustedClose: true
     };
 
     if (period) {
@@ -66,7 +68,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       queryOptions.period1 = startDate.toISOString().split('T')[0];
     }
 
+    console.log('Fetching stock history with options:', { symbol, queryOptions });
     const result = await yahooFinance.historical(symbol as string, queryOptions);
+    console.log('Received data:', result);
     
     const formattedData = result.map(item => ({
       date: item.date,
