@@ -46,7 +46,14 @@ const StockList: React.FC = () => {
   useEffect(() => {
     const fetchStocks = async () => {
       try {
+        console.log('Fetching stocks from:', `${API_URL}/stocks`);
         const response = await axios.get(`${API_URL}/stocks`);
+        console.log('Stocks response:', response.data);
+        
+        if (!response.data || response.data.length === 0) {
+          throw new Error('No stock data received');
+        }
+
         setStocks(response.data);
         setError(null);
         setLoading(false);
@@ -54,18 +61,23 @@ const StockList: React.FC = () => {
         // 모든 주식에 대해 뉴스 가져오기
         for (const stock of response.data) {
           try {
+            console.log(`Fetching news for ${stock.symbol}`);
             const newsResponse = await axios.get(`${API_URL}/news?symbol=${stock.symbol}`);
-            setNews(prev => ({
-              ...prev,
-              [stock.symbol]: newsResponse.data
-            }));
+            console.log(`News response for ${stock.symbol}:`, newsResponse.data);
+            
+            if (newsResponse.data && newsResponse.data.length > 0) {
+              setNews(prev => ({
+                ...prev,
+                [stock.symbol]: newsResponse.data
+              }));
+            }
           } catch (error) {
             console.error(`Error fetching news for ${stock.symbol}:`, error);
           }
         }
       } catch (error) {
         console.error('Error fetching stocks:', error);
-        setError('Failed to fetch stock data');
+        setError(error instanceof Error ? error.message : 'Failed to fetch stock data');
         setLoading(false);
       }
     };
@@ -88,7 +100,12 @@ const StockList: React.FC = () => {
   }
 
   if (error) {
-    return <div className="text-center text-red-600">{error}</div>;
+    return (
+      <div className="text-center text-red-600">
+        <p>Error: {error}</p>
+        <p className="text-sm mt-2">Please try refreshing the page</p>
+      </div>
+    );
   }
 
   return (

@@ -11,30 +11,60 @@ const WATCHLIST = [
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS 헤더 설정
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // OPTIONS 요청 처리
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   try {
+    console.log('Fetching stock data...');
     const stockData = await Promise.all(
       WATCHLIST.map(async (symbol) => {
-        const quote = await yahooFinance.quote(symbol);
-        return {
-          symbol: quote.symbol,
-          name: quote.longName || quote.shortName || quote.symbol,
-          price: quote.regularMarketPrice,
-          change: quote.regularMarketChange,
-          changePercent: quote.regularMarketChangePercent,
-          marketCap: quote.marketCap,
-          volume: quote.regularMarketVolume,
-          currency: quote.currency
-        };
+        try {
+          console.log(`Fetching data for ${symbol}...`);
+          const quote = await yahooFinance.quote(symbol);
+          console.log(`Successfully fetched data for ${symbol}`);
+          return {
+            symbol: quote.symbol,
+            name: quote.longName || quote.shortName || quote.symbol,
+            price: quote.regularMarketPrice,
+            change: quote.regularMarketChange,
+            changePercent: quote.regularMarketChangePercent,
+            marketCap: quote.marketCap,
+            volume: quote.regularMarketVolume,
+            currency: quote.currency
+          };
+        } catch (error) {
+          console.error(`Error fetching data for ${symbol}:`, error);
+          return null;
+        }
       })
     );
 
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    // null 값 필터링
+    const validStockData = stockData.filter(stock => stock !== null);
     
-    res.status(200).json(stockData);
+    if (validStockData.length === 0) {
+      throw new Error('No valid stock data available');
+    }
+
+    console.log('Successfully fetched all stock data');
+    res.status(200).json(validStockData);
   } catch (error) {
-    console.error('Error fetching stock data:', error);
-    res.status(500).json({ error: 'Failed to fetch stock data' });
+    console.error('Error in stocks API:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch stock data',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 } 
