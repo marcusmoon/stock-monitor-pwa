@@ -21,9 +21,7 @@ interface News {
   source: string;
 }
 
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://stock-monitor-r9g93gfap-marcusmoons-projects.vercel.app/api'
-  : 'http://localhost:4000/api';
+const API_URL = 'https://stock-monitor-r9g93gfap-marcusmoons-projects.vercel.app/api';
 
 const formatMarketCap = (marketCap: number): string => {
   if (marketCap >= 1e12) {
