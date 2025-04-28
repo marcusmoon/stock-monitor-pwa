@@ -51,14 +51,9 @@ const StockChart: React.FC = () => {
     const fetchStockData = async () => {
       try {
         setLoading(true);
-        console.log('Fetching from URL:', `${API_URL}/stock-history?symbol=${selectedSymbol}&period=${selectedPeriod}&interval=${selectedInterval}`);
-        const response = await axios.get(`${API_URL}/stock-history`, {
-          params: {
-            symbol: selectedSymbol,
-            period: selectedPeriod,
-            interval: selectedInterval
-          }
-        });
+        const url = `${API_URL}/stock-history?symbol=${selectedSymbol}&period=${selectedPeriod}&interval=${selectedInterval}`;
+        console.log('Fetching from URL:', url);
+        const response = await axios.get(url);
         console.log('Response:', response.data);
         setStockData(response.data);
         setError(null);
