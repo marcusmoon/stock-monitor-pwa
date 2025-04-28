@@ -10,7 +10,7 @@ interface News {
   source: string;
 }
 
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = 'https://stock-monitor-r9g93gfap-marcusmoons-projects.vercel.app/api';
 
 const NewsList: React.FC = () => {
   const [news, setNews] = useState<News[]>([]);
