@@ -2,58 +2,69 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import yahooFinance from 'yahoo-finance2';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS 헤더 설정
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
-
-  // OPTIONS 요청 처리
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { symbol, period = '1y', interval = '1d' } = req.query;
+    const { symbol, period, interval } = req.query;
     
     if (!symbol) {
-      res.status(400).json({ error: 'Symbol parameter is required' });
-      return;
+      return res.status(400).json({ error: 'Symbol is required' });
     }
 
-    console.log(`Fetching history for ${symbol}...`);
-    
-    // Yahoo Finance API 초기화
-    const yahooFinanceInstance = yahooFinance.default;
-    
     const queryOptions = {
-      period1: new Date(Date.now() - (365 * 24 * 60 * 60 * 1000)), // 1년 전
-      period2: new Date(),
-      interval: interval as string
+      period1: '2020-01-01',
+      interval: interval || '1d',
     };
 
-    const result = await yahooFinanceInstance.historical(symbol as string, queryOptions);
+    if (period) {
+      const now = new Date();
+      const startDate = new Date();
+      
+      switch (period) {
+        case '1d':
+          startDate.setDate(now.getDate() - 1);
+          break;
+        case '1w':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case '1m':
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+        case '3m':
+          startDate.setMonth(now.getMonth() - 3);
+          break;
+        case '6m':
+          startDate.setMonth(now.getMonth() - 6);
+          break;
+        case '1y':
+          startDate.setFullYear(now.getFullYear() - 1);
+          break;
+        case '5y':
+          startDate.setFullYear(now.getFullYear() - 5);
+          break;
+        default:
+          startDate.setFullYear(now.getFullYear() - 1);
+      }
+      
+      queryOptions.period1 = startDate.toISOString().split('T')[0];
+    }
+
+    const result = await yahooFinance.historical(symbol as string, queryOptions);
     
-    const historicalData = result.map(item => ({
-      date: item.date.toISOString().split('T')[0],
-      price: item.close,
-      volume: item.volume,
+    const formattedData = result.map(item => ({
+      date: item.date,
+      open: item.open,
       high: item.high,
       low: item.low,
-      open: item.open
+      close: item.close,
+      volume: item.volume
     }));
 
-    console.log(`Successfully fetched history for ${symbol}`);
-    res.status(200).json(historicalData);
+    res.json(formattedData);
   } catch (error) {
-    console.error('Error in stock history API:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch stock history',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('Error fetching stock history:', error);
+    res.status(500).json({ error: 'Failed to fetch stock history' });
   }
 } 
