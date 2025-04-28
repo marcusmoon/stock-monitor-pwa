@@ -28,11 +28,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     console.log('Fetching stock data...');
+    
+    // Yahoo Finance API 초기화
+    const yahooFinanceInstance = yahooFinance.default;
+    
     const stockData = await Promise.all(
       WATCHLIST.map(async (symbol) => {
         try {
           console.log(`Fetching data for ${symbol}...`);
-          const quote = await yahooFinance.quote(symbol);
+          const quote = await yahooFinanceInstance.quote(symbol);
           console.log(`Successfully fetched data for ${symbol}`);
           return {
             symbol: quote.symbol,
