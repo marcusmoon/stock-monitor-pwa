@@ -43,30 +43,35 @@ const StockChart: React.FC = () => {
   const [stockData, setStockData] = useState<StockData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [chartOptions, setChartOptions] = useState<ChartOptions>({
-    symbol: 'AAPL',
-    period: '1y',
-    interval: '1d',
-  });
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('1y');
+  const [selectedInterval, setSelectedInterval] = useState<string>('1d');
+  const [selectedSymbol, setSelectedSymbol] = useState<string>('AAPL');
 
   useEffect(() => {
     const fetchStockData = async () => {
       try {
-        const response = await axios.get(
-          `${API_URL}/stock-history?symbol=${chartOptions.symbol}&period=${chartOptions.period}&interval=${chartOptions.interval}`
-        );
+        setLoading(true);
+        console.log('Fetching from URL:', `${API_URL}/stock-history?symbol=${selectedSymbol}&period=${selectedPeriod}&interval=${selectedInterval}`);
+        const response = await axios.get(`${API_URL}/stock-history`, {
+          params: {
+            symbol: selectedSymbol,
+            period: selectedPeriod,
+            interval: selectedInterval
+          }
+        });
+        console.log('Response:', response.data);
         setStockData(response.data);
         setError(null);
-        setLoading(false);
       } catch (error) {
         console.error('Error fetching stock data:', error);
-        setError('Failed to fetch stock data');
+        setError(error instanceof Error ? error.message : 'Failed to fetch stock data');
+      } finally {
         setLoading(false);
       }
     };
 
     fetchStockData();
-  }, [chartOptions]);
+  }, [selectedSymbol, selectedPeriod, selectedInterval]);
 
   if (loading) {
     return <div className="text-center">Loading...</div>;
@@ -111,7 +116,7 @@ const StockChart: React.FC = () => {
       },
       title: {
         display: true,
-        text: `${chartOptions.symbol} Stock Price History`,
+        text: `${selectedSymbol} Stock Price History`,
       },
       tooltip: {
         callbacks: {
@@ -136,10 +141,8 @@ const StockChart: React.FC = () => {
       <div className="mb-4 flex gap-4">
         <select
           className="border rounded p-2"
-          value={chartOptions.symbol}
-          onChange={(e) =>
-            setChartOptions({ ...chartOptions, symbol: e.target.value })
-          }
+          value={selectedSymbol}
+          onChange={(e) => setSelectedSymbol(e.target.value)}
         >
           <option value="AAPL">Apple</option>
           <option value="GOOGL">Google</option>
@@ -150,10 +153,8 @@ const StockChart: React.FC = () => {
         </select>
         <select
           className="border rounded p-2"
-          value={chartOptions.period}
-          onChange={(e) =>
-            setChartOptions({ ...chartOptions, period: e.target.value })
-          }
+          value={selectedPeriod}
+          onChange={(e) => setSelectedPeriod(e.target.value)}
         >
           <option value="1d">1 Day</option>
           <option value="5d">5 Days</option>
@@ -166,10 +167,8 @@ const StockChart: React.FC = () => {
         </select>
         <select
           className="border rounded p-2"
-          value={chartOptions.interval}
-          onChange={(e) =>
-            setChartOptions({ ...chartOptions, interval: e.target.value })
-          }
+          value={selectedInterval}
+          onChange={(e) => setSelectedInterval(e.target.value)}
         >
           <option value="1m">1 Minute</option>
           <option value="5m">5 Minutes</option>
