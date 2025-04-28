@@ -1,0 +1,35 @@
+service: stock-monitor-api
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'ap-northeast-2'}
+  environment:
+    ALPHA_VANTAGE_API_KEY: ${env:ALPHA_VANTAGE_API_KEY}
+    NEWS_API_KEY: ${env:NEWS_API_KEY}
+
+functions:
+  getStocks:
+    handler: src/handlers/stocks.getStocks
+    events:
+      - http:
+          path: /api/stocks
+          method: get
+          cors: true
+
+  getStockHistory:
+    handler: src/handlers/stocks.getStockHistory
+    events:
+      - http:
+          path: /api/stock-history
+          method: get
+          cors: true
+
+  getNews:
+    handler: src/handlers/news.getNews
+    events:
+      - http:
+          path: /api/news
+          method: get
+          cors: true 
