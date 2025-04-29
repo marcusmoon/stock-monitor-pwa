@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import yahooFinance from 'yahoo-finance2';
+import axios from 'axios';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Add CORS headers
@@ -28,13 +28,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Symbol is required' });
     }
 
-    const queryOptions = {
-      period1: '2020-01-01',
-      interval: interval as '1d' | '1wk' | '1mo' || '1d',
-      events: 'history' as const,
-      includeAdjustedClose: true
-    };
+    const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'API key is not configured' });
+    }
 
+    // Determine the function based on interval
+    let function_name = 'TIME_SERIES_DAILY';
+    if (interval === '1m') {
+      function_name = 'TIME_SERIES_INTRADAY';
+    } else if (interval === '1wk') {
+      function_name = 'TIME_SERIES_WEEKLY';
+    }
+
+    const url = `https://www.alphavantage.co/query?function=${function_name}&symbol=${symbol}&apikey=${apiKey}&outputsize=full`;
+    console.log('Fetching stock history from Alpha Vantage:', url);
+    
+    const response = await axios.get(url);
+    console.log('Received data from Alpha Vantage');
+
+    // Parse the response based on the function
+    let timeSeries;
+    if (function_name === 'TIME_SERIES_INTRADAY') {
+      timeSeries = response.data['Time Series (1min)'];
+    } else if (function_name === 'TIME_SERIES_DAILY') {
+      timeSeries = response.data['Time Series (Daily)'];
+    } else {
+      timeSeries = response.data['Weekly Time Series'];
+    }
+
+    if (!timeSeries) {
+      throw new Error('No data received from Alpha Vantage');
+    }
+
+    // Convert the data to the expected format
+    const formattedData = Object.entries(timeSeries).map(([date, data]: [string, any]) => ({
+      date: new Date(date).toISOString(),
+      open: parseFloat(data['1. open']),
+      high: parseFloat(data['2. high']),
+      low: parseFloat(data['3. low']),
+      close: parseFloat(data['4. close']),
+      volume: parseInt(data['5. volume'])
+    }));
+
+    // Sort by date in ascending order
+    formattedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Filter based on period
     if (period) {
       const now = new Date();
       const startDate = new Date();
@@ -64,24 +104,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         default:
           startDate.setFullYear(now.getFullYear() - 1);
       }
-      
-      queryOptions.period1 = startDate.toISOString().split('T')[0];
+
+      const filteredData = formattedData.filter(item => 
+        new Date(item.date) >= startDate && new Date(item.date) <= now
+      );
+
+      res.json(filteredData);
+    } else {
+      res.json(formattedData);
     }
-
-    console.log('Fetching stock history with options:', { symbol, queryOptions });
-    const result = await yahooFinance.historical(symbol as string, queryOptions);
-    console.log('Received data:', result);
-    
-    const formattedData = result.map(item => ({
-      date: item.date,
-      open: item.open,
-      high: item.high,
-      low: item.low,
-      close: item.close,
-      volume: item.volume
-    }));
-
-    res.json(formattedData);
   } catch (error) {
     console.error('Error fetching stock history:', error);
     res.status(500).json({ error: 'Failed to fetch stock history' });
