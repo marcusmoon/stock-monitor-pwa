@@ -1,26 +1,9 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import yahooFinance from 'yahoo-finance2';
+const express = require('express');
+const router = express.Router();
+const yahooFinance = require('yahoo-finance2').default;
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Add CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
-
-  // Handle OPTIONS request
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+// Get stock history
+router.get('/stock-history', async (req, res) => {
   try {
     const { symbol, period, interval } = req.query;
     
@@ -30,9 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const queryOptions = {
       period1: '2020-01-01',
-      interval: interval as '1d' | '1wk' | '1mo' || '1d',
-      events: 'history' as const,
-      includeAdjustedClose: true
+      interval: interval || '1d',
     };
 
     if (period) {
@@ -68,9 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       queryOptions.period1 = startDate.toISOString().split('T')[0];
     }
 
-    console.log('Fetching stock history with options:', { symbol, queryOptions });
-    const result = await yahooFinance.historical(symbol as string, queryOptions);
-    console.log('Received data:', result);
+    const result = await yahooFinance.historical(symbol, queryOptions);
     
     const formattedData = result.map(item => ({
       date: item.date,
@@ -86,4 +65,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Error fetching stock history:', error);
     res.status(500).json({ error: 'Failed to fetch stock history' });
   }
-} 
+});
+
+// Get stock quote
+router.get('/stock-quote', async (req, res) => {
+  try {
+    const { symbol } = req.query;
+    
+    if (!symbol) {
+      return res.status(400).json({ error: 'Symbol is required' });
+    }
+
+    const quote = await yahooFinance.quote(symbol);
+    
+    res.json({
+      symbol: quote.symbol,
+      price: quote.regularMarketPrice,
+      change: quote.regularMarketChange,
+      changePercent: quote.regularMarketChangePercent,
+      volume: quote.regularMarketVolume,
+      marketCap: quote.marketCap,
+      previousClose: quote.regularMarketPreviousClose,
+      open: quote.regularMarketOpen,
+      dayHigh: quote.regularMarketDayHigh,
+      dayLow: quote.regularMarketDayLow
+    });
+  } catch (error) {
+    console.error('Error fetching stock quote:', error);
+    res.status(500).json({ error: 'Failed to fetch stock quote' });
+  }
+});
+
+module.exports = router; 
